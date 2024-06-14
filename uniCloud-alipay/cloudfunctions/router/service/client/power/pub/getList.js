@@ -42,8 +42,8 @@ module.exports = {
 		} = vk.pubfn.getCommonTime();
 		let parmas = {}
 		if (dateType === 'day') {
-			parmas.start = todayStart + 1000 * 60
-			parmas.end = todayEnd + 1000 * 60
+			parmas.start = todayStart + 60*1000
+			parmas.end = todayEnd + 60*1000
 		} else if (dateType === 'month') {
 			parmas.start = monthStart
 			parmas.end = monthEnd
@@ -51,8 +51,8 @@ module.exports = {
 			parmas.start = weekStart
 			parmas.end = weekEnd
 		} else if (dateType === 'yesterday') {
-			parmas.start = yesterdayStart + 1000 * 60
-			parmas.end = yesterdayEnd + 1000 * 60
+			parmas.start = yesterdayStart+ 60*1000
+			parmas.end = yesterdayEnd + 60*1000
 		} else if (dateType === 'year') {
 			parmas.start = yearStart
 			parmas.end = yearEnd
@@ -63,8 +63,17 @@ module.exports = {
 			dbName: "power",
 			pageSize: -1,
 			whereJson: {
-				time: _.and(_.gt(parmas.start), _.lte(parmas.end))
+				time: _.and(_.gte(parmas.start), _.lte(parmas.end))
 			},
+		});
+		let lastData = await vk.baseDao.select({
+			dbName: "power",
+			whereJson: {},
+			pageSize: 1,
+			sortArr: [{
+				'name': 'time',
+				'type': 'desc'
+			}]
 		});
 		let box = {}
 		rows.forEach(item => {
@@ -76,7 +85,7 @@ module.exports = {
 			}
 
 			box[f] = {
-				list: [],
+				list:[],
 				total: 0
 			}
 		})
@@ -90,15 +99,18 @@ module.exports = {
 			}
 			for (let var1 in box) {
 				if (var1 == f) {
-					box[var1].list.push(item.spend)
+					let hours =  vk.pubfn.getDateInfo(item.time).hour
+					if(dateType==='day' || dateType==='yesterday'){
+						box[var1].list.push(item.spend)
+					}
 					box[var1].total += item.spend
 				}
 			}
 		})
-
 		res.data = {
 			data: box,
-			balance: rows[rows.length - 1].price
+			balance: lastData.rows[0].price,
+			rows,parmas
 		}
 		return res
 		// 业务逻辑结束-----------------------------------------------------------
